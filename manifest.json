@@ -1,13 +1,40 @@
 {
   "id": "genius",
   "name": "Genius",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": "Viboplr",
   "description": "Song explanations, artist descriptions, and album descriptions from Genius",
   "icon": "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
-  "minAppVersion": "0.9.4",
+  "minAppVersion": "1.0.85",
+  "runtime": "worker",
+  "permissions": ["network:genius.com"],
   "updateUrl": "https://github.com/outcast1000/viboplr-genius/releases/latest/download/update.json",
   "contributes": {
+    "assistant": {
+      "instructions": "Genius song explanations, annotations, artist/album descriptions and scraped lyrics — all served through the info types: use POST /v1/info/fetch (typeIds: song_bio, song_meaning, artist_bio, album_wiki, lyrics), optionally with pluginId=genius. search_genius is for when exact metadata fails: free-text search (a lyric fragment works) returning candidate songs to retry the info fetch with.",
+      "tools": [
+        {
+          "name": "search_genius",
+          "description": "Free-text Genius search (title, artist, or a lyric fragment) — returns candidate songs (title/artist/url). Use to resolve ambiguous metadata before an info fetch",
+          "readOnly": true,
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string"
+              },
+              "limit": {
+                "type": "number",
+                "description": "1-10, default 5"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        }
+      ]
+    },
     "informationTypes": [
       {
         "id": "song_bio",

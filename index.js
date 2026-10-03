@@ -228,6 +228,36 @@ function activate(api) {
     });
   }
 
+  // --- Assistant tool (api.assistant) ---
+  // Free-text Genius search — the info types above are exact entity matches;
+  // this is for a model chasing "the song that goes ..." or an ambiguous
+  // title. Guarded: older hosts have no api.assistant namespace.
+
+  if (api.assistant) {
+    api.assistant.onTool("search_genius", function (args) {
+      var query = typeof args.query === "string" ? args.query.trim() : "";
+      if (!query) return Promise.reject(new Error('"query" (string) is required'));
+      var limit = Math.min(10, Math.max(1, parseInt(args.limit, 10) || 5));
+      return geniusFetch(BASE_SEARCH + encodeURIComponent(query)).then(function (data) {
+        var sections = (data && data.response && data.response.sections) || [];
+        var out = [];
+        for (var s = 0; s < sections.length && out.length < limit; s++) {
+          var hits = sections[s].hits || [];
+          for (var h = 0; h < hits.length && out.length < limit; h++) {
+            var r = hits[h].result;
+            if (hits[h].type !== "song" || !r) continue;
+            out.push({
+              title: r.title,
+              artist: r.artist_names || null,
+              url: r.url || null,
+            });
+          }
+        }
+        return { matches: out };
+      });
+    });
+  }
+
   // --- onFetch handlers ---
 
   api.informationTypes.onFetch("song_bio", function (entity) {

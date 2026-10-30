@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3
+- Each AI tool now says what it is about (its category), so Viboplr's in-app assistant can offer it alongside the app's own tools of the same kind instead of sending every tool at once. Viboplr versions that don't know the field ignore it.
+- The AI notes now name the app's tools (get_entity_info, get_lyrics) instead of HTTP routes an in-app assistant can't call.
+
 ## v1.1.2
 - Each permission now says why the plugin needs it, shown under it when Viboplr asks. No functional changes.
 

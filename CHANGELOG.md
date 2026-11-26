@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.4
+- **Failures now say why.** A failed lookup used to reach Viboplr as a bare error, so the app could only say "Genius couldn't answer". It now names the cause: a network Genius blocks with its Cloudflare bot check ("Genius is blocking requests from this network…"), rate limiting, a Genius server error, or the network error itself. Failures are also written to the plugin log.
+- A lyrics page Genius refuses is now reported as an error instead of "no lyrics found". A page that doesn't exist (404) is still "not found".
+
 ## v1.1.3
 - Each AI tool now says what it is about (its category), so Viboplr's in-app assistant can offer it alongside the app's own tools of the same kind instead of sending every tool at once. Viboplr versions that don't know the field ignore it.
 - The AI notes now name the app's tools (get_entity_info, get_lyrics) instead of HTTP routes an in-app assistant can't call.

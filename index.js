@@ -4,10 +4,45 @@
 function activate(api) {
   var BASE_SEARCH = "https://genius.com/api/search/multi?q=";
 
+  // Why a Genius request failed, in words the user can act on. The host shows
+  // this under the provider ("Genius couldn't answer: …"), so it must name the
+  // cause, not just a status code.
+  function describeHttpFailure(resp) {
+    var status = resp.status;
+    var headers = resp.headers || {};
+    var server = String(headers["server"] || "").toLowerCase();
+    // Cloudflare answers a bot check with 403 + `cf-mitigated: challenge` — a
+    // page a plain request can't pass. It means this network (its IP, often a
+    // VPN or corporate proxy) is being challenged, not that the song is missing.
+    if (headers["cf-mitigated"] || (status === 403 && server.indexOf("cloudflare") !== -1)) {
+      return "Genius is blocking requests from this network (Cloudflare bot check, HTTP " + status + "). " +
+        "It usually works from another network.";
+    }
+    if (status === 429) return "Genius is rate limiting requests (HTTP 429) — try again in a few minutes.";
+    if (status === 401 || status === 403) return "Genius refused the request (HTTP " + status + ").";
+    if (status >= 500) return "Genius is having trouble (HTTP " + status + ") — try again later.";
+    return "Genius answered HTTP " + status + ".";
+  }
+
+  function httpError(resp) {
+    var err = new Error(describeHttpFailure(resp));
+    err.status = resp.status;
+    return err;
+  }
+
+  // The message for an info-type `error` result.
+  function errorResult(e) {
+    var message = e && e.message ? String(e.message) : String(e || "");
+    api.log("warn", "Genius lookup failed: " + message);
+    return { status: "error", message: message || "Genius lookup failed." };
+  }
+
   function geniusFetch(url) {
     return api.network.fetch(url).then(function (resp) {
-      if (resp.status !== 200) throw new Error("HTTP " + resp.status);
-      return resp.json();
+      if (resp.status !== 200) throw httpError(resp);
+      return resp.json().catch(function () {
+        throw new Error("Genius sent an answer that couldn't be read.");
+      });
     });
   }
 
@@ -201,7 +236,10 @@ function activate(api) {
 
   function scrapeLyrics(url) {
     return api.network.fetch(url).then(function (resp) {
-      if (resp.status !== 200) return null;
+      // A 404 is "no such page"; anything else is a failure worth reporting
+      // (a blocked network used to read as "no lyrics").
+      if (resp.status === 404) return null;
+      if (resp.status !== 200) throw httpError(resp);
       return resp.text().then(function (html) {
         // Genius SSR renders lyrics in data-lyrics-container divs (one per verse)
         // Use lookahead to stop at next container, footer, or any non-lyrics section
@@ -274,7 +312,7 @@ function activate(api) {
         var url = song.url || found.url;
         return { status: "ok", value: { summary: about, _meta: { url: url, providerName: "Genius" } } };
       });
-    }).catch(function () { return { status: "error" }; });
+    }).catch(errorResult);
   });
 
   api.informationTypes.onFetch("song_meaning", function (entity) {
@@ -289,7 +327,7 @@ function activate(api) {
         delete result.overview;
         return { status: "ok", value: result };
       });
-    }).catch(function () { return { status: "error" }; });
+    }).catch(errorResult);
   });
 
   api.informationTypes.onFetch("artist_bio", function (entity) {
@@ -300,7 +338,7 @@ function activate(api) {
         if (!result) return { status: "not_found" };
         return { status: "ok", value: result };
       });
-    }).catch(function () { return { status: "error" }; });
+    }).catch(errorResult);
   });
 
   api.informationTypes.onFetch("album_wiki", function (entity) {
@@ -313,7 +351,7 @@ function activate(api) {
         if (!result) return { status: "not_found" };
         return { status: "ok", value: result };
       });
-    }).catch(function () { return { status: "error" }; });
+    }).catch(errorResult);
   });
 
   api.informationTypes.onFetch("lyrics", function (entity) {
@@ -326,7 +364,7 @@ function activate(api) {
         if (!text) return { status: "not_found" };
         return { status: "ok", value: { text: text, kind: "plain", _meta: { url: found.url, providerName: "Genius" } } };
       });
-    }).catch(function () { return { status: "error" }; });
+    }).catch(errorResult);
   });
 }
 
